@@ -9,6 +9,7 @@ namespace RedirectModule.Configuration
         private const string DestinationUrlKeyName = "destinationUrl";
         private const string IgnoreCaseKeyName = "ignoreCase";
         private const string PermanentKeyName = "permanent";
+        private const string IgnoreQueryKeyName = "ignoreQuery";
 
         [ConfigurationProperty(TargetUrlKeyName, IsRequired = true, IsKey = true)]
         public string TargetUrl {
@@ -33,6 +34,13 @@ namespace RedirectModule.Configuration
             get { return (bool)this[PermanentKeyName]; }
             set { this[PermanentKeyName] = value; }
         }
+		
+		[ConfigurationProperty(IgnoreQueryKeyName, IsRequired = false, DefaultValue = false)]
+        public bool IgnoreQuery
+        {
+            get { return (bool)this[IgnoreQueryKeyName]; }
+            set { this[IgnoreQueryKeyName] = value; }
+        }
 
         private bool _isAbsoluteUrl;
         public bool IsAbsoluteUrl {
@@ -46,11 +54,13 @@ namespace RedirectModule.Configuration
             set { _regex = value; } 
         }
 
-        public RedirectionElement(string targetUrl, string destinationUrl, bool permanent, bool ignoreCase) {
+		public RedirectionElement(string targetUrl, string destinationUrl, bool permanent, bool ignoreCase, bool ignoreQuery)
+        {
             TargetUrl = targetUrl;
             DestinationUrl = destinationUrl;
             IgnoreCase = ignoreCase;
             Permanent = permanent;
+            IgnoreQuery = ignoreQuery;
         }
 
         public RedirectionElement() { }

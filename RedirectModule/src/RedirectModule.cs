@@ -15,9 +15,8 @@ using RedirectModule.Configuration;
 
 namespace RedirectModule
 {
-    /// <summary>
-    /// The purpose of this module is to redirect requests 
-    /// based on web.config data in the &lt;redirections&gt; section.
+	/// <summary>
+    /// This module redirect requests based on xml configuration.
     /// </summary>
     public class RedirectModule : IHttpModule
     {
@@ -26,26 +25,30 @@ namespace RedirectModule
         private readonly string _applicationPath;
         private List<RedirectionElement> _redirections;
 
-        public RedirectModule() {
-            if (HttpRuntime.AppDomainAppVirtualPath != null) {
+        public RedirectModule()
+        {
+            if (HttpRuntime.AppDomainAppVirtualPath != null)
+            {
                 _applicationPath = (HttpRuntime.AppDomainAppVirtualPath.Length > 1)
                                        ? HttpRuntime.AppDomainAppVirtualPath
                                        : String.Empty;
             }
         }
 
-        public void Init(HttpApplication context) {
+        public void Init(HttpApplication context)
+        {
             _redirections = new List<RedirectionElement>();
 
             if (!RedirectionsSection.HasRedirects)
                 return;
 
-            foreach (RedirectionElement redirection in RedirectionsSection.Settings.Redirections) {
+            foreach (RedirectionElement redirection in RedirectionsSection.Settings.Redirections)
+            {
                 string targetUrl = HandleTilde(redirection.TargetUrl);
 
                 redirection.Regex = redirection.IgnoreCase
                                         ? new Regex(targetUrl, RegexOptions.IgnoreCase /* | RegexOptions.Compiled*/)
-                                        : new Regex(targetUrl/*, RegexOptions.Compiled*/);
+                                        : new Regex(targetUrl /*, RegexOptions.Compiled*/);
 
                 redirection.IsAbsoluteUrl = !redirection.TargetUrl.StartsWith("~/") && !redirection.TargetUrl.StartsWith("^~/");
 
@@ -55,32 +58,42 @@ namespace RedirectModule
             context.BeginRequest += OnBeginRequest;
         }
 
-        public void Dispose() { }
+        public void Dispose()
+        {
+        }
 
-        private void OnBeginRequest(object sender, EventArgs e) {
-            HttpApplication app = sender as HttpApplication;
+        private void OnBeginRequest(object sender, EventArgs e)
+        {
+            var app = sender as HttpApplication;
             if (app == null || _redirections == null || _redirections.Count < 1)
                 return;
 
-            foreach (RedirectionElement redirection in _redirections) {
+            foreach (RedirectionElement redirection in _redirections)
+            {
                 string requestUrl = redirection.IsAbsoluteUrl
-                                        ? app.Request.Url.ToString()
-                                        : app.Request.RawUrl;
+                    ? (redirection.IgnoreQuery ? app.Request.Url.GetLeftPart(UriPartial.Path) : app.Request.Url.ToString())
+                    : (redirection.IgnoreQuery ? app.Request.Url.AbsolutePath : app.Request.Url.PathAndQuery);
 
-                if (redirection.Regex.IsMatch(requestUrl)) {
+                if (redirection.Regex.IsMatch(requestUrl))
+                {
                     string destinationUrl = redirection.Regex.Replace(requestUrl, redirection.DestinationUrl, 1);
 
                     if (!redirection.IsAbsoluteUrl)
                         destinationUrl = HandleTilde(destinationUrl);
 
+                    if (redirection.IgnoreQuery)
+                        destinationUrl += app.Request.Url.Query;
+
                     // if the redirect is to an absolute URL it cannot be served with RewritePath(), making the Permanent option irrelevant
-                    if (redirection.Permanent || redirection.IsAbsoluteUrl) {
+                    if (redirection.Permanent || redirection.IsAbsoluteUrl)
+                    {
                         app.Response.StatusCode = 301;
                         app.Response.Status = "301 Moved Permanently";
                         app.Response.RedirectLocation = destinationUrl;
                         app.Response.End();
                     }
-                    else {
+                    else
+                    {
                         app.Context.RewritePath(destinationUrl);
 
                         // Keep track of the virtual URL because we'll need it to fix postbacks
@@ -93,7 +106,8 @@ namespace RedirectModule
             }
         }
 
-        private string HandleTilde(string url) {
+        private string HandleTilde(string url)
+        {
             if (string.IsNullOrEmpty(url))
                 return url;
 
